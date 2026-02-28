@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}{{ event['name'] }} — UFC Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>{{ event['name'] }}</h2>
+    <p class="subtitle">{{ event['date'] or 'TBD' }}{% if event['location'] %} &middot; {{ event['location'] }}{% endif %}</p>
+</div>
+
+{% if analyses %}
+{% for a in analyses %}
+{% set fight = a['fight'] %}
+{% set pred = a['prediction'] %}
+{% set p1 = a['profile1'] or {} %}
+{% set p2 = a['profile2'] or {} %}
+{% set elo1 = a['elo1'] or {} %}
+{% set elo2 = a['elo2'] or {} %}
+{% set props = a['props'] or {} %}
+{% set odds = a['odds'] or {} %}
+{% set edge = a['edge'] or {} %}
+
+<div class="fight-card">
+    <div class="fight-card-header">
+        <span>{{ fight.get('weight_class', '') }}{% if fight.get('is_title_fight') %} &middot; Title Fight{% endif %}</span>
+        {% if fight.get('is_main_event') %}<span style="color: var(--gold);">MAIN EVENT</span>{% endif %}
+    </div>
+
+    <div class="fight-card-body">
+        <!-- Fighter Matchup -->
+        <div class="fight-matchup">
+            <div class="fighter-side left">
+                <div class="fighter-name"><a href="{{ url_for('fighter_detail', fighter_id=fight['fighter1_id']) }}">{{ fight['fighter1_name'] }}</a></div>
+                <div class="fighter-meta">
+                    {{ fmt_record(p1) }} &middot; {{ fmt_height(fight.get('fighter1_height')) }}
+                    {% if fight.get('fighter1_reach') %} &middot; {{ fight['fighter1_reach']|int }}" reach{% endif %}
+                </div>
+                {% if p1.get('style') and p1['style'] != 'unknown' %}
+                <div style="margin-top: 8px;">
+                    <span class="tag {{ p1['style'] }}">{{ p1['style']|title }}</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="vs-badge">VS</div>
+            <div class="fighter-side right">
+                <div class="fighter-name"><a href="{{ url_for('fighter_detail', fighter_id=fight['fighter2_id']) }}">{{ fight['fighter2_name'] }}</a></div>
+                <div class="fighter-meta">
+                    {{ fmt_record(p2) }} &middot; {{ fmt_height(fight.get('fighter2_height')) }}
+                    {% if fight.get('fighter2_reach') %} &middot; {{ fight['fighter2_reach']|int }}" reach{% endif %}
+                </div>
+                {% if p2.get('style') and p2['style'] != 'unknown' %}
+                <div style="margin-top: 8px;">
+                    <span class="tag {{ p2['style'] }}">{{ p2['style']|title }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if pred %}
+        <!-- Win Probability Bar -->
+        {% set p1_prob = pred.get('fighter1_win_prob', 0.5) %}
+        {% set p2_prob = pred.get('fighter2_win_prob', 0.5) %}
+        <div class="prob-bar-container">
+            <div class="prob-bar-labels">
+                <span class="f1-prob">{{ fmt_pct(p1_prob) }}</span>
+                <span style="font-size: 11px; color: var(--text-muted);">WIN PROBABILITY</span>
+                <span class="f2-prob">{{ fmt_pct(p2_prob) }}</span>
+            </div>
+            <div class="prob-bar">
+                <div class="f1-fill" style="width: {{ (p1_prob * 100)|round(1) }}%;"></div>
+                <div class="f2-fill" style="width: {{ (p2_prob * 100)|round(1) }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ELO Comparison -->
+        <div class="elo-comparison">
+            <div class="elo-item">
+                <div class="elo-label">Overall</div>
+                <div class="elo-scores">
+                    <span class="f1">{{ elo1.get('overall', 1500)|round(0)|int }}</span>
+                    <span class="f2">{{ elo2.get('overall', 1500)|round(0)|int }}</span>
+                </div>
+            </div>
+            <div class="elo-item">
+                <div class="elo-label">Striking</div>
+                <div class="elo-scores">
+                    <span class="f1">{{ elo1.get('striking', 1500)|round(0)|int }}</span>
+                    <span class="f2">{{ elo2.get('striking', 1500)|round(0)|int }}</span>
+                </div>
+            </div>
+            <div class="elo-item">
+                <div class="elo-label">Grappling</div>
+                <div class="elo-scores">
+                    <span class="f1">{{ elo1.get('grappling', 1500)|round(0)|int }}</span>
+                    <span class="f2">{{ elo2.get('grappling', 1500)|round(0)|int }}</span>
+                </div>
+            </div>
+            <div class="elo-item">
+                <div class="elo-label">Cardio</div>
+                <div class="elo-scores">
+                    <span class="f1">{{ elo1.get('cardio', 1500)|round(0)|int }}</span>
+                    <span class="f2">{{ elo2.get('cardio', 1500)|round(0)|int }}</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <!-- Method of Victory -->
+            {% set mov = props.get('method_of_victory') %}
+            {% if mov %}
+            <div class="detail-section">
+                <h4>Method of Victory</h4>
+                <div class="mov-grid">
+                    <div class="mov-item">
+                        <div class="mov-label">KO/TKO</div>
+                        <div class="mov-value mov-ko">{{ fmt_pct(mov.get('ko_prob')) }}</div>
+                    </div>
+                    <div class="mov-item">
+                        <div class="mov-label">Submission</div>
+                        <div class="mov-value mov-sub">{{ fmt_pct(mov.get('sub_prob')) }}</div>
+                    </div>
+                    <div class="mov-item">
+                        <div class="mov-label">Decision</div>
+                        <div class="mov-value mov-dec">{{ fmt_pct(mov.get('dec_prob')) }}</div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Odds & Edges -->
+            <div class="detail-section">
+                <h4>Odds & Edges</h4>
+                {% if odds %}
+                <div class="detail-row">
+                    <span class="label">{{ fight['fighter1_name'] }} (market)</span>
+                    <span class="value">{{ fmt_odds(odds.get('avg_f1_ml')) }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">{{ fight['fighter2_name'] }} (market)</span>
+                    <span class="value">{{ fmt_odds(odds.get('avg_f2_ml')) }}</span>
+                </div>
+                {% if edge %}
+                <div class="detail-row">
+                    <span class="label">{{ fight['fighter1_name'] }} edge</span>
+                    <span class="value {% if edge.get('f1_edge', 0) > 0 %}positive{% endif %}">{{ fmt_pct(edge.get('f1_edge')) }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">{{ fight['fighter2_name'] }} edge</span>
+                    <span class="value {% if edge.get('f2_edge', 0) > 0 %}positive{% endif %}">{{ fmt_pct(edge.get('f2_edge')) }}</span>
+                </div>
+                {% if edge.get('f1_edge', 0) >= 0.05 %}
+                <div style="margin-top: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span class="edge-badge {{ edge.get('f1_conf', 'none') }}">{{ edge.get('f1_conf', 'none')|upper }}</span>
+                    <span class="kelly-badge">{{ "%.2f"|format(edge.get('f1_kelly', 0)) }}u</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">on {{ fight['fighter1_name'] }}</span>
+                </div>
+                {% endif %}
+                {% if edge.get('f2_edge', 0) >= 0.05 %}
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span class="edge-badge {{ edge.get('f2_conf', 'none') }}">{{ edge.get('f2_conf', 'none')|upper }}</span>
+                    <span class="kelly-badge">{{ "%.2f"|format(edge.get('f2_kelly', 0)) }}u</span>
+                    <span style="font-size: 12px; color: var(--text-muted);">on {{ fight['fighter2_name'] }}</span>
+                </div>
+                {% endif %}
+                {% endif %}
+                {% else %}
+                <div style="color: var(--text-muted); font-size: 13px; padding: 12px 0;">
+                    No odds data available. Set <code>ODDS_API_KEY</code> to fetch live odds.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Over/Under -->
+        {% set ou = props.get('over_under') %}
+        {% if ou %}
+        <div class="detail-section" style="margin-top: 12px;">
+            <h4>Over/Under {{ ou.get('posted_total', 2.5) }} Rounds</h4>
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px;">
+                <span style="color: var(--green);">Over {{ fmt_pct(ou.get('over_prob')) }}</span>
+                <span style="color: var(--text-muted); font-size: 11px;">Expected: {{ "%.1f"|format(ou.get('expected_rounds', 0)) }} rounds</span>
+                <span style="color: var(--red);">Under {{ fmt_pct(ou.get('under_prob')) }}</span>
+            </div>
+            <div class="ou-bar">
+                <div class="over-fill" style="width: {{ ((ou.get('over_prob', 0.5)) * 100)|round(1) }}%;"></div>
+                <div class="under-fill" style="width: {{ ((ou.get('under_prob', 0.5)) * 100)|round(1) }}%;"></div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Completed fight result -->
+        {% if fight.get('winner_id') %}
+        <div style="margin-top: 16px; padding: 12px 16px; background: var(--bg-accent); border-radius: var(--radius-sm); border: 1px solid var(--border);">
+            <span style="font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Result: </span>
+            <span style="font-weight: 700;">
+                {% if fight['winner_id'] == fight['fighter1_id'] %}{{ fight['fighter1_name'] }}{% else %}{{ fight['fighter2_name'] }}{% endif %}
+                wins
+            </span>
+            {% if fight.get('method') %}<span style="color: var(--text-secondary);"> via {{ fight['method'] }}</span>{% endif %}
+            {% if fight.get('round') %}<span style="color: var(--text-muted);"> R{{ fight['round'] }} {{ fight.get('time', '') }}</span>{% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#129354;</div>
+    <h3>No fights found for this event</h3>
+    <p>Run <code>python main.py --scrape</code> to fetch fight card data</p>
+</div>
+{% endif %}
+{% endblock %}

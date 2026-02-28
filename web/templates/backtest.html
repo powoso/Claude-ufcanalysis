@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Backtest — UFC Analyzer{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Model Backtest</h2>
+    <p class="subtitle">Historical accuracy since {{ start_date }}</p>
+</div>
+
+<!-- Summary -->
+<div class="backtest-summary">
+    <div class="stat-card" style="text-align: center;">
+        <div class="stat-label">Accuracy</div>
+        <div class="accuracy-ring">
+            {% set acc = (results.get('accuracy', 0) * 100) %}
+            <svg viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="50" fill="none" stroke="var(--border)" stroke-width="8"/>
+                <circle cx="60" cy="60" r="50" fill="none"
+                    stroke="{% if acc >= 60 %}var(--green){% elif acc >= 50 %}var(--gold){% else %}var(--red){% endif %}"
+                    stroke-width="8" stroke-linecap="round"
+                    stroke-dasharray="{{ acc * 3.14 }} {{ 314 - acc * 3.14 }}"
+                    transform="rotate(-90 60 60)"/>
+            </svg>
+            <div class="ring-text" style="color: {% if acc >= 60 %}var(--green){% elif acc >= 50 %}var(--gold){% else %}var(--red){% endif %};">
+                {{ "%.1f"|format(acc) }}%
+            </div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Correct Picks</div>
+        <div class="stat-value" style="color: var(--green);">{{ results.get('correct', 0) }}</div>
+        <div class="stat-sub">of {{ results.get('total', 0) }} fights</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Log Loss</div>
+        <div class="stat-value">{{ "%.4f"|format(results.get('avg_log_loss', 0)) }}</div>
+        <div class="stat-sub">Lower is better (0.693 = coin flip)</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Sample Size</div>
+        <div class="stat-value">{{ results.get('total', 0) }}</div>
+        <div class="stat-sub">Fights analyzed</div>
+    </div>
+</div>
+
+<!-- Date Filter -->
+<div class="card" style="margin-bottom: 24px;">
+    <form method="get" action="{{ url_for('backtest_page') }}" style="display: flex; gap: 12px; align-items: center;">
+        <label style="font-size: 13px; color: var(--text-secondary);">Backtest from:</label>
+        <input type="date" name="from" value="{{ start_date }}" class="search-input" style="max-width: 200px;">
+        <button type="submit" class="btn btn-primary">Run Backtest</button>
+    </form>
+</div>
+
+<!-- Per-event breakdown -->
+{% if events %}
+<div class="card">
+    <div class="card-header"><h3>Event Breakdown</h3></div>
+    <table class="edges-table">
+        <thead>
+            <tr>
+                <th>Event</th>
+                <th>Date</th>
+                <th>Correct</th>
+                <th>Total</th>
+                <th>Accuracy</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ev in events %}
+            {% set ev_acc = (ev['correct'] / ev['total'] * 100) if ev['total'] > 0 else 0 %}
+            <tr>
+                <td style="font-weight: 600;">{{ ev['name'] }}</td>
+                <td style="color: var(--text-muted); font-size: 13px;">{{ ev['date'] or '' }}</td>
+                <td class="mono positive">{{ ev['correct'] }}</td>
+                <td class="mono">{{ ev['total'] }}</td>
+                <td>
+                    <span class="mono {% if ev_acc >= 60 %}positive{% elif ev_acc < 45 %}negative{% endif %}">
+                        {{ "%.0f"|format(ev_acc) }}%
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="empty-icon">&#128202;</div>
+    <h3>No backtest data available</h3>
+    <p>Run <code>python main.py --scrape --train</code> first to populate fight data and train the model.</p>
+</div>
+{% endif %}
+{% endblock %}

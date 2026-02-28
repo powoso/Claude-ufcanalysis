@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}{{ fighter['name'] }} — UFC Analyzer{% endblock %}
+
+{% block content %}
+<!-- Hero -->
+<div class="fighter-hero">
+    <div class="fighter-avatar">{{ fighter['name'][0] }}</div>
+    <div class="fighter-hero-info">
+        <h2>{{ fighter['name'] }}</h2>
+        {% if fighter.get('nickname') %}
+        <div class="nickname">"{{ fighter['nickname'] }}"</div>
+        {% endif %}
+        <div class="record-big">{{ fmt_record(fighter) }}</div>
+        <div class="fighter-tags">
+            {% if profile.get('style') and profile['style'] != 'unknown' %}
+            <span class="tag {{ profile['style'] }}">{{ profile['style']|title }}</span>
+            {% endif %}
+            {% if fighter.get('weight_class') %}
+            <span class="tag">{{ fighter['weight_class'] }}</span>
+            {% endif %}
+            {% if fighter.get('stance') %}
+            <span class="tag">{{ fighter['stance'] }}</span>
+            {% endif %}
+            {% if profile.get('age') %}
+            <span class="tag">Age {{ profile['age'] }}</span>
+            {% endif %}
+            {% if fighter.get('team') %}
+            <span class="tag">{{ fighter['team'] }}</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-label">ELO Overall</div>
+        <div class="stat-value">{{ elo.get('overall', 1500)|round(0)|int }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">ELO Striking</div>
+        <div class="stat-value" style="color: var(--red);">{{ elo.get('striking', 1500)|round(0)|int }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">ELO Grappling</div>
+        <div class="stat-value" style="color: var(--purple);">{{ elo.get('grappling', 1500)|round(0)|int }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">ELO Cardio</div>
+        <div class="stat-value" style="color: var(--cyan);">{{ elo.get('cardio', 1500)|round(0)|int }}</div>
+    </div>
+</div>
+
+<div class="detail-grid">
+    <!-- Physical Attributes -->
+    <div class="card">
+        <div class="card-header"><h3>Physical Attributes</h3></div>
+        <div class="detail-row">
+            <span class="label">Height</span>
+            <span class="value">{{ fmt_height(fighter.get('height_inches')) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Reach</span>
+            <span class="value">{{ (fighter.get('reach_inches') or 'N/A')|string }}{% if fighter.get('reach_inches') %}"{% endif %}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Stance</span>
+            <span class="value">{{ fighter.get('stance') or 'N/A' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Date of Birth</span>
+            <span class="value">{{ fighter.get('dob') or 'N/A' }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Days Since Last Fight</span>
+            <span class="value">{{ profile.get('days_off') or 'N/A' }}</span>
+        </div>
+    </div>
+
+    <!-- Weighted Stats -->
+    {% set ws = profile.get('weighted_stats') or {} %}
+    <div class="card">
+        <div class="card-header"><h3>Weighted Performance (Recent)</h3></div>
+        {% if ws %}
+        <div class="detail-row">
+            <span class="label">Win Rate (weighted)</span>
+            <span class="value">{{ fmt_pct(ws.get('weighted_win_rate')) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Sig. Strikes Landed/Fight</span>
+            <span class="value">{{ "%.1f"|format(ws.get('sig_str_landed_avg', 0)) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Striking Accuracy</span>
+            <span class="value">{{ fmt_pct(ws.get('sig_str_accuracy')) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Takedowns Landed/Fight</span>
+            <span class="value">{{ "%.1f"|format(ws.get('td_landed_avg', 0)) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Submission Attempts/Fight</span>
+            <span class="value">{{ "%.1f"|format(ws.get('sub_att_avg', 0)) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">Finish Rate</span>
+            <span class="value">{{ fmt_pct(ws.get('finish_rate')) }}</span>
+        </div>
+        <div class="detail-row">
+            <span class="label">KO Rate / Sub Rate</span>
+            <span class="value">{{ fmt_pct(ws.get('ko_rate')) }} / {{ fmt_pct(ws.get('sub_rate')) }}</span>
+        </div>
+        {% else %}
+        <div style="color: var(--text-muted); font-size: 13px; padding: 8px 0;">
+            No detailed fight stats available yet.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Career Stats -->
+{% set cs = profile.get('career_stats') or {} %}
+{% if cs %}
+<div class="card" style="margin-top: 16px;">
+    <div class="card-header"><h3>Career Stats</h3></div>
+    <div class="stats-grid" style="margin-bottom: 0;">
+        <div class="stat-card">
+            <div class="stat-label">SLpM</div>
+            <div class="stat-value" style="font-size: 22px;">{{ "%.2f"|format(cs.get('slpm') or 0) }}</div>
+            <div class="stat-sub">Sig. Str. Landed / Min</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Str. Accuracy</div>
+            <div class="stat-value" style="font-size: 22px;">{{ fmt_pct(cs.get('str_acc')) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">SApM</div>
+            <div class="stat-value" style="font-size: 22px;">{{ "%.2f"|format(cs.get('sapm') or 0) }}</div>
+            <div class="stat-sub">Sig. Str. Absorbed / Min</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Str. Defense</div>
+            <div class="stat-value" style="font-size: 22px;">{{ fmt_pct(cs.get('str_def')) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">TD Avg</div>
+            <div class="stat-value" style="font-size: 22px;">{{ "%.2f"|format(cs.get('td_avg') or 0) }}</div>
+            <div class="stat-sub">Takedowns / 15 Min</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">TD Accuracy</div>
+            <div class="stat-value" style="font-size: 22px;">{{ fmt_pct(cs.get('td_acc')) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">TD Defense</div>
+            <div class="stat-value" style="font-size: 22px;">{{ fmt_pct(cs.get('td_def')) }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-label">Sub Avg</div>
+            <div class="stat-value" style="font-size: 22px;">{{ "%.1f"|format(cs.get('sub_avg') or 0) }}</div>
+            <div class="stat-sub">Sub Attempts / 15 Min</div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Fight History -->
+<div class="card" style="margin-top: 16px;">
+    <div class="card-header"><h3>Fight History</h3></div>
+    {% if fight_history %}
+    <table class="history-table">
+        <thead>
+            <tr>
+                <th>Result</th>
+                <th>Opponent</th>
+                <th>Event</th>
+                <th>Method</th>
+                <th>Round</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for f in fight_history %}
+            <tr>
+                <td>
+                    <span class="result-badge {% if f['result'] == 'W' %}win{% elif f['result'] == 'L' %}loss{% else %}nc{% endif %}">
+                        {{ f['result'] }}
+                    </span>
+                </td>
+                <td><a href="{{ url_for('fighter_detail', fighter_id=f['opponent_id']) }}">{{ f['opponent_name'] }}</a></td>
+                <td style="color: var(--text-secondary); font-size: 12px;">{{ f['event_name'] }}</td>
+                <td style="font-size: 13px;">{{ f.get('method') or 'N/A' }}</td>
+                <td class="mono" style="font-size: 13px;">{{ f.get('round') or '-' }}</td>
+                <td style="color: var(--text-muted); font-size: 12px;">{{ f.get('event_date') or '' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="color: var(--text-muted); font-size: 13px; padding: 12px 0;">No fight history found.</div>
+    {% endif %}
+</div>
+{% endblock %}
