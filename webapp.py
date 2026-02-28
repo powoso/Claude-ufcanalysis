@@ -52,9 +52,12 @@ def fmt_odds(val):
     return f"+{v}" if v > 0 else str(v)
 
 def fmt_record(fighter):
-    w = fighter.get("record_wins") or 0
-    l = fighter.get("record_losses") or 0
-    d = fighter.get("record_draws") or 0
+    try:
+        w = fighter["record_wins"] or 0
+        l = fighter["record_losses"] or 0
+        d = fighter["record_draws"] or 0
+    except (KeyError, TypeError):
+        w = l = d = 0
     return f"{w}-{l}-{d}"
 
 def fmt_height(inches):

@@ -128,7 +128,7 @@ def cmd_analyze(args):
             event_id = event["id"]
             print(f"\n{'='*60}")
             print(f"Analyzing: {event_name}")
-            print(f"Date: {event.get('date', 'TBD')}")
+            print(f"Date: {event['date'] or 'TBD'}")
             print(f"{'='*60}\n")
 
             # Find edges
