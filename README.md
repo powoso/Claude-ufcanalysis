@@ -94,7 +94,9 @@ python main.py --quick
 python webapp.py
 ```
 
-Open your browser to **http://localhost:5000**
+Open your browser to **http://localhost:8080**
+
+> **Note:** On macOS, port 5000 is used by AirPlay Receiver. The app defaults to port 8080 and will automatically find an open port if needed.
 
 ---
 
@@ -106,7 +108,7 @@ Open your browser to **http://localhost:5000**
 python webapp.py
 ```
 
-Then visit http://localhost:5000. The dashboard includes:
+Then visit http://localhost:8080. The dashboard includes:
 
 | Page | Description |
 |------|-------------|
@@ -239,7 +241,7 @@ All settings are in `config.py`:
 
 **"No odds data"** — Set `ODDS_API_KEY` environment variable with your free key from the-odds-api.com.
 
-**Port already in use** — Change the port: `PORT=8080 python webapp.py`
+**Port already in use** — The app auto-detects open ports, but you can also set one explicitly: `PORT=9000 python webapp.py`. On macOS, port 5000 is reserved by AirPlay Receiver — to free it, go to System Settings > General > AirDrop & Handoff and disable AirPlay Receiver.
 
 ---
 

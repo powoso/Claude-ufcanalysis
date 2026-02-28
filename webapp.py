@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
-"""UFC Betting Analyzer — Flask Web Application."""
+"""UFC Betting Analyzer — Flask Web Application.
+
+Usage:
+    python webapp.py              # Start on port 8080
+    PORT=9000 python webapp.py    # Start on custom port
+"""
 
 import os
 import sys
 import json
+import socket
 import logging
 from datetime import datetime
 
-from flask import Flask, render_template, jsonify, request, redirect, url_for
+# Ensure project root is on path regardless of where we run from
+_ROOT = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _ROOT)
 
-# Ensure project root is on path
-sys.path.insert(0, os.path.dirname(__file__))
+from flask import Flask, render_template, jsonify, request, redirect, url_for
 
 import config
 from database import init_db, get_db, get_upcoming_events, get_completed_events, get_event_fights, get_fighter_by_name, get_fighter_fights
@@ -21,7 +28,10 @@ from analysis.edge_detection import find_edges, kelly_criterion, calculate_edge,
 from analysis.prop_bets import analyze_props, method_of_victory_probs, over_under_analysis
 from scrapers.odds_api import fetch_odds, american_to_implied, implied_to_american, get_best_odds
 
-app = Flask(__name__, template_folder="web/templates", static_folder="web/static")
+_TEMPLATE_DIR = os.path.join(_ROOT, "web", "templates")
+_STATIC_DIR = os.path.join(_ROOT, "web", "static")
+
+app = Flask(__name__, template_folder=_TEMPLATE_DIR, static_folder=_STATIC_DIR)
 app.secret_key = os.environ.get("SECRET_KEY", "ufc-analyzer-dev-key")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -298,8 +308,37 @@ def create_app():
     return app
 
 
+def _port_available(port):
+    """Check if a TCP port is available."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+
+
+def _find_open_port(preferred):
+    """Return preferred port if open, otherwise try alternatives."""
+    if _port_available(preferred):
+        return preferred
+    # On macOS, port 5000 is often used by AirPlay Receiver.
+    # Try a few common alternatives.
+    for candidate in [8080, 8888, 3000, 9000, 5050]:
+        if candidate != preferred and _port_available(candidate):
+            return candidate
+    return preferred  # fall back and let Flask report the error
+
+
 if __name__ == "__main__":
     init_db()
-    port = int(os.environ.get("PORT", 5000))
+    preferred_port = int(os.environ.get("PORT", 8080))
+    port = _find_open_port(preferred_port)
     debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+
+    if port != preferred_port:
+        print(f"Port {preferred_port} is in use, using {port} instead.")
+    print(f"\n  UFC Betting Analyzer")
+    print(f"  Running at: http://localhost:{port}\n")
+
     app.run(host="0.0.0.0", port=port, debug=debug)

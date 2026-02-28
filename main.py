@@ -16,8 +16,8 @@ import logging
 import sys
 import os
 
-# Ensure project root is on path
-sys.path.insert(0, os.path.dirname(__file__))
+# Ensure project root is on path regardless of where we run from
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import config
 from database import init_db, get_db, get_upcoming_events, get_completed_events
