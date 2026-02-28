@@ -76,23 +76,26 @@ echo 'export ODDS_API_KEY="your_api_key_here"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-### Step 6: Run the Data Pipeline
+### Step 6: Launch (Quick Start)
 
-Scrape fight data, train the model, and analyze upcoming cards:
-
-```bash
-# Full pipeline (scrape → train → analyze)
-python main.py
-
-# Or quick mode for faster first run
-python main.py --quick
-```
-
-### Step 7: Launch the Web Dashboard
+The easiest way to run everything:
 
 ```bash
-python webapp.py
+./run.sh              # Launch the web dashboard
+./run.sh pipeline     # Scrape data + train model + launch dashboard
 ```
+
+Or run the steps manually:
+
+```bash
+# Scrape fight data, train the model, and analyze upcoming cards
+python3 main.py --quick
+
+# Launch the web dashboard
+python3 webapp.py
+```
+
+> **Important:** On macOS, use `python3` (not `python`). macOS does not include `python` on the PATH by default.
 
 Open your browser to **http://localhost:8080**
 
@@ -105,7 +108,7 @@ Open your browser to **http://localhost:8080**
 ### Web Dashboard
 
 ```bash
-python webapp.py
+python3 webapp.py
 ```
 
 Then visit http://localhost:8080. The dashboard includes:
@@ -122,20 +125,20 @@ Then visit http://localhost:8080. The dashboard includes:
 ### CLI Commands
 
 ```bash
-python main.py                  # Full pipeline: scrape, train, analyze
-python main.py --scrape         # Scrape data only
-python main.py --train          # Train/retrain the prediction model
-python main.py --analyze        # Analyze upcoming card (uses cached data)
-python main.py --backtest       # Backtest model against history
-python main.py --report         # Generate markdown report
-python main.py --quick          # Quick mode: smaller scrape, faster run
-python main.py -v               # Verbose logging
+python3 main.py                  # Full pipeline: scrape, train, analyze
+python3 main.py --scrape         # Scrape data only
+python3 main.py --train          # Train/retrain the prediction model
+python3 main.py --analyze        # Analyze upcoming card (uses cached data)
+python3 main.py --backtest       # Backtest model against history
+python3 main.py --report         # Generate markdown report
+python3 main.py --quick          # Quick mode: smaller scrape, faster run
+python3 main.py -v               # Verbose logging
 ```
 
 ### Running Tests
 
 ```bash
-python -m unittest tests.test_core -v
+python3 -m unittest tests.test_core -v
 ```
 
 ---
@@ -235,13 +238,13 @@ All settings are in `config.py`:
 
 ## Troubleshooting
 
-**"No upcoming events"** — Run `python main.py --scrape` to fetch event data.
+**"No upcoming events"** — Run `python3 main.py --scrape` to fetch event data.
 
-**"No trained model"** — Run `python main.py --train` after scraping data.
+**"No trained model"** — Run `python3 main.py --train` after scraping data.
 
 **"No odds data"** — Set `ODDS_API_KEY` environment variable with your free key from the-odds-api.com.
 
-**Port already in use** — The app auto-detects open ports, but you can also set one explicitly: `PORT=9000 python webapp.py`. On macOS, port 5000 is reserved by AirPlay Receiver — to free it, go to System Settings > General > AirDrop & Handoff and disable AirPlay Receiver.
+**Port already in use** — The app auto-detects open ports, but you can also set one explicitly: `PORT=9000 python3 webapp.py`. On macOS, port 5000 is reserved by AirPlay Receiver — to free it, go to System Settings > General > AirDrop & Handoff and disable AirPlay Receiver.
 
 ---
 
