@@ -37,7 +37,7 @@ def extract_features(conn, fighter1_id, fighter2_id):
 
     s1 = p1.get("weighted_stats") or {}
     s2 = p2.get("weighted_stats") or {}
-    if not s1 or not s2:
+    if not s1 and not s2:
         return None
 
     elo1 = get_fighter_elo(conn, fighter1_id)
@@ -132,8 +132,10 @@ def build_training_data(conn, min_date="2020-01-01"):
 def train_model(conn, min_date="2020-01-01"):
     """Train the logistic regression model and return it + metrics."""
     X, y = build_training_data(conn, min_date)
-    if X is None or len(X) < 20:
-        logger.warning("Insufficient training data (%s samples)", len(X) if X is not None else 0)
+    min_samples = 10
+    if X is None or len(X) < min_samples:
+        logger.warning("Insufficient training data (%s samples, need %d)",
+                        len(X) if X is not None else 0, min_samples)
         return None, {}
 
     pipeline = Pipeline([
@@ -147,7 +149,8 @@ def train_model(conn, min_date="2020-01-01"):
     ])
 
     # Cross-validation
-    cv_scores = cross_val_score(pipeline, X, y, cv=min(5, len(X) // 5 or 2), scoring="accuracy")
+    n_folds = max(2, min(5, len(X) // 5))
+    cv_scores = cross_val_score(pipeline, X, y, cv=n_folds, scoring="accuracy")
     logger.info("CV accuracy: %.3f (+/- %.3f)", cv_scores.mean(), cv_scores.std())
 
     # Train on full data

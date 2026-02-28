@@ -39,11 +39,71 @@ def days_since_last_fight(conn, fighter_id):
         return None
 
 
+def _career_stats_fallback(conn, fighter_id):
+    """Build a stats dict from the fighter_stats career averages table.
+
+    Used when no individual fight records with results are available,
+    so the model can still make predictions using career averages
+    scraped from the fighter's UFCStats profile page.
+    """
+    career = conn.execute(
+        "SELECT * FROM fighter_stats WHERE fighter_id = ?", (fighter_id,)
+    ).fetchone()
+    fighter = conn.execute(
+        "SELECT record_wins, record_losses, record_draws FROM fighters WHERE id = ?",
+        (fighter_id,)
+    ).fetchone()
+
+    if not career and not fighter:
+        return None
+
+    wins = (fighter["record_wins"] or 0) if fighter else 0
+    losses = (fighter["record_losses"] or 0) if fighter else 0
+    total = wins + losses
+    win_rate = wins / total if total > 0 else 0.5
+
+    result = {
+        "num_fights": total,
+        "weighted_win_rate": win_rate,
+        "sig_str_landed_avg": 0,
+        "sig_str_accuracy": 0,
+        "td_landed_avg": 0,
+        "td_accuracy": 0,
+        "sub_att_avg": 0,
+        "ctrl_time_avg": 0,
+        "knockdowns_avg": 0,
+        "ko_rate": 0,
+        "sub_rate": 0,
+        "dec_rate": 0,
+        "finish_rate": 0,
+        "avg_rounds": 0,
+    }
+
+    if career:
+        # Map career averages (per-minute) to approximate per-fight values
+        # Assume ~15 min avg fight (3 rounds)
+        avg_minutes = 15
+        result["sig_str_landed_avg"] = (career.get("slpm") or 0) * avg_minutes
+        result["sig_str_accuracy"] = career.get("str_acc") or 0
+        result["td_landed_avg"] = (career.get("td_avg") or 0)
+        result["td_accuracy"] = career.get("td_acc") or 0
+        result["sub_att_avg"] = career.get("sub_avg") or 0
+        result["ko_rate"] = career.get("ko_rate") or 0
+        result["sub_rate"] = career.get("sub_rate") or 0
+        result["dec_rate"] = career.get("dec_rate") or 0
+        result["finish_rate"] = career.get("finish_rate") or 0
+
+    return result
+
+
 def compute_weighted_stats(conn, fighter_id, max_fights=10):
     """Compute recency-weighted stats from individual fight records.
 
     The last N fights are weighted using exponential decay, with the most
     recent fight getting weight 1.0, second most recent 0.85, etc.
+
+    Falls back to career stats from fighter_stats table if no completed
+    fights with results are found.
     """
     fights = conn.execute(
         """SELECT f.id, f.fighter1_id, f.fighter2_id, f.winner_id,
@@ -59,7 +119,8 @@ def compute_weighted_stats(conn, fighter_id, max_fights=10):
     ).fetchall()
 
     if not fights:
-        return None
+        # Fall back to career stats from fighter_stats table
+        return _career_stats_fallback(conn, fighter_id)
 
     total_weight = 0
     weighted = {

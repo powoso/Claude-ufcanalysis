@@ -77,6 +77,25 @@ def _parse_ctrl_time(text):
     return None
 
 
+def _parse_date(text):
+    """Parse various date formats from UFCStats into YYYY-MM-DD."""
+    if not text or text.strip() in ("--", ""):
+        return None
+    text = text.strip()
+    for fmt in ("%B %d, %Y", "%b %d, %Y", "%b. %d, %Y",
+                "%Y-%m-%d", "%m/%d/%Y", "%d %B %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(text, fmt).strftime("%Y-%m-%d")
+        except ValueError:
+            continue
+    # Last resort: try to find a date pattern
+    m = re.search(r"(\d{4})-(\d{2})-(\d{2})", text)
+    if m:
+        return m.group(0)
+    logger.warning("Could not parse date: %r", text)
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Event list scraping
 # ---------------------------------------------------------------------------
@@ -103,14 +122,7 @@ def scrape_completed_events(max_pages=3):
                 date_str = date_cell[1].get_text(strip=True) if date_cell[1] else None
             if len(date_cell) >= 3:
                 location = date_cell[2].get_text(strip=True) if date_cell[2] else None
-            parsed_date = None
-            if date_str:
-                for fmt in ("%B %d, %Y", "%b %d, %Y", "%b. %d, %Y"):
-                    try:
-                        parsed_date = datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-                        break
-                    except ValueError:
-                        continue
+            parsed_date = _parse_date(date_str)
             if name and href:
                 events.append({
                     "name": name,
@@ -148,14 +160,7 @@ def scrape_upcoming_events():
             date_str = date_cell[1].get_text(strip=True) if date_cell[1] else None
         if len(date_cell) >= 3:
             location = date_cell[2].get_text(strip=True) if date_cell[2] else None
-        parsed_date = None
-        if date_str:
-            for fmt in ("%B %d, %Y", "%b %d, %Y", "%b. %d, %Y"):
-                try:
-                    parsed_date = datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-                    break
-                except ValueError:
-                    continue
+        parsed_date = _parse_date(date_str)
         if name and href:
             events.append({
                 "name": name,
@@ -203,10 +208,29 @@ def scrape_event_fights(event_url):
         winner = None
         if len(results) >= 2:
             r1 = results[0].get_text(strip=True).upper()
+            r2 = results[1].get_text(strip=True).upper()
             if r1 == "W":
                 winner = "fighter1"
             elif r1 == "L":
                 winner = "fighter2"
+            elif r2 == "W":
+                winner = "fighter2"
+            if not winner:
+                logger.debug("No winner detected for %s vs %s (r1=%r, r2=%r)",
+                             f1_name, f2_name, r1, r2)
+        else:
+            # Try i-tag based detection (newer UFCStats layout)
+            win_tags = cols[0].select("i.b-flag__text")
+            if not win_tags:
+                win_tags = cols[0].select("i")
+            for wt in win_tags:
+                txt = wt.get_text(strip=True).upper()
+                if txt == "WIN":
+                    winner = "fighter1"
+                    break
+            if not winner and len(results) == 0:
+                logger.debug("No W/L markers found for %s vs %s (col0 html: %s)",
+                             f1_name, f2_name, str(cols[0])[:200])
 
         # weight class
         wc_el = cols[6] if len(cols) > 6 else None

@@ -45,6 +45,7 @@ def ingest_event_fights(conn, event_id, event_url):
     fights_data = scrape_event_fights(event_url)
     fight_ids = []
 
+    winners_found = 0
     for fd in fights_data:
         # Ensure fighters exist
         f1_id = upsert_fighter(
@@ -60,8 +61,10 @@ def ingest_event_fights(conn, event_id, event_url):
         winner_id = None
         if fd.get("winner") == "fighter1":
             winner_id = f1_id
+            winners_found += 1
         elif fd.get("winner") == "fighter2":
             winner_id = f2_id
+            winners_found += 1
 
         fid = upsert_fight(
             conn, event_id, f1_id, f2_id,
@@ -76,7 +79,8 @@ def ingest_event_fights(conn, event_id, event_url):
         fight_ids.append((fid, fd))
 
     conn.commit()
-    logger.info("Ingested %d fights for event %d", len(fight_ids), event_id)
+    logger.info("Ingested %d fights for event %d (%d with winners)",
+                len(fight_ids), event_id, winners_found)
     return fight_ids
 
 
@@ -302,5 +306,21 @@ def full_ingest(conn, max_event_pages=3, max_fight_details=100,
     logger.info("Step 6: Fetching odds...")
     odds_data = ingest_odds(conn)
 
+    # Diagnostics
+    total_fighters = conn.execute("SELECT COUNT(*) as cnt FROM fighters").fetchone()["cnt"]
+    total_fights = conn.execute("SELECT COUNT(*) as cnt FROM fights").fetchone()["cnt"]
+    fights_with_winner = conn.execute(
+        "SELECT COUNT(*) as cnt FROM fights WHERE winner_id IS NOT NULL"
+    ).fetchone()["cnt"]
+    events_with_date = conn.execute(
+        "SELECT COUNT(*) as cnt FROM events WHERE date IS NOT NULL"
+    ).fetchone()["cnt"]
+    fight_stats_count = conn.execute("SELECT COUNT(*) as cnt FROM fight_stats").fetchone()["cnt"]
+    fighter_stats_count = conn.execute("SELECT COUNT(*) as cnt FROM fighter_stats").fetchone()["cnt"]
+
     logger.info("=== Full ingestion complete ===")
+    logger.info("DB summary: %d fighters, %d fights (%d with winners), "
+                "%d events with dates, %d fight_stats rows, %d fighter_stats rows",
+                total_fighters, total_fights, fights_with_winner,
+                events_with_date, fight_stats_count, fighter_stats_count)
     return odds_data
